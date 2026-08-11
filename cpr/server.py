@@ -9,7 +9,7 @@ from cpr.data import DataStore
 _store: DataStore | None = None
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     global _store
     _store = DataStore()
     _store.load('/Users/ali/PycharmProjects/test-cpr/data/sample_data.json')

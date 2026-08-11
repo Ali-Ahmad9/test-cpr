@@ -23,7 +23,7 @@ class AbstractDataStore(ABC):
     def load(self, path: str|Path):
         raise NotImplementedError
 
-    def search(self, query: str, limit: int = 10) -> list[SearchResult] | None:
+    def search(self, query: str, limit: int = 10) -> list[SearchResult] | list[None]:
         raise NotImplementedError
 
 
@@ -58,7 +58,7 @@ class DataStore(AbstractDataStore):
         df = loader(path)
         self._df = self._clean_df(df)
 
-    def search(self, query: str, limit: int = 10) -> list[SearchResult] | None:
+    def search(self, query: str, limit: int = 10) -> list[SearchResult] | list[None]:
         keywords = [kw.lower() for kw in query.strip().split() if kw]
         if not keywords or self._df is None:
             print("Nothing found!")
