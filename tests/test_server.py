@@ -73,4 +73,30 @@ class TestServer:
               'score': 1.0,
               'snippet': 'No fruit in this tex',
               'title': 'Apple'}],
- 'total': 3}
+                           'total': 3}
+
+    async def test_search_tfidf(self, mock_client):
+        results = (await mock_client.get('/search_tfidf?query=apple')).json()
+        assert results == {'query': 'apple',
+                           'results': [{'id': '1',
+                                        'score': 0.538,
+                                        'snippet': 'I contain the word a',
+                                        'title': 'Alpha'},
+                                       {'id': '3',
+                                        'score': 0.4114,
+                                        'snippet': 'No fruit in this tex',
+                                        'title': 'Apple'},
+                                       {'id': '2',
+                                        'score': 0.2745,
+                                        'snippet': 'Apple and cinnamon m',
+                                        'title': 'Beta'}],
+                           'total': 3}
+
+
+    async def test_higher_tf_scores_tdidf(self, mock_client):
+        results = (await mock_client.get('/search_tfidf?query=apple')).json()
+        by_id = {r['id']: r['score'] for r in results['results']}
+        assert by_id['1'] > by_id['3'] > by_id['2']
+
+    async def test_invalid_arg(self, mock_client):
+        assert (await mock_client.get('/search_tfidf?q=apple')).status_code == 422

@@ -64,3 +64,19 @@ class TestDataStore():
                 )
             )
         ]
+
+    def test_unique_search_tdidf(self, tmp_path):
+        docs = [
+            {'id': '1', 'title': 'First', "text": 'shared unique content'},
+            {'id': '2', 'title': 'Second', "text": 'shared general content'},
+            {'id': '3', 'title': 'Third', "text": 'shared general content'},
+        ]
+        path = tmp_path / 'docs.json'
+        path.write_text(json.dumps(docs), encoding='utf-8')
+        store = DataStore()
+        store.load(path)
+
+        doc1_unique_score = store.search_tfidf('unique')[0].score
+        doc1_shared_score = next(r.score for r in store.search_tfidf('shared') if r.document.id == "1")
+
+        assert doc1_unique_score > doc1_shared_score
