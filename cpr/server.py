@@ -3,7 +3,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Query, Response, HTTPException
 
-from cpr.models import SearchResponse, DocumentResult
+from cpr.models import SearchResponse, build_response
 from cpr.data import DataStore
 
 _store: DataStore | None = None
@@ -29,17 +29,7 @@ def search(
         raise HTTPException(status_code=503, detail='Data store not initialised')
 
     results = _store.search(query=query, limit=limit)
-    return SearchResponse(
-        query=query,
-        total=len(results),
-        results = [
-            DocumentResult(
-                id = r.document.id,
-                title = r.document.title,
-                score = r.score,
-                snippet=r.document.text[:20]
-            ) for r in results]
-    )
+    return build_response(query, results)
 
 @app.get('/search_tfidf')
 def search_tfidf(
