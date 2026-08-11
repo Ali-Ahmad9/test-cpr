@@ -36,7 +36,11 @@ def search_tfidf(
         query: str = Query(..., description="Search query "),
         limit: int = Query(default=10, ge=1, le=100, description="Number of results to return"),
 ) -> SearchResponse:
-    pass
+    if _store is None:
+        raise HTTPException(status_code=503, detail='Data store not initialised')
+
+    results = _store.search_tfidf(query=query, limit=limit)
+    return build_response(query, results)
 
 @app.get("/health")
 def health() -> Response:

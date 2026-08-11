@@ -1,8 +1,11 @@
 from abc import ABC
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
+
+import numpy as np
 import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 @dataclass
@@ -49,10 +52,10 @@ class DataStore(AbstractDataStore):
     def __init__(self):
         self._df: pd.DataFrame | None = None
         self._meta_cols: tuple[str] | tuple[None] = tuple()
+        self._vectoriser: TfidfVectorizer | None = None
 
 
-    @staticmethod
-    def _clean_df(df: pd.DataFrame) -> pd.DataFrame:
+    def _build_df(self, df: pd.DataFrame) -> pd.DataFrame:
         if 'id' not in df.columns:
             raise ValueError("Must have 'id' in column")
         df['id'] = df['id'].astype('str')
@@ -60,6 +63,9 @@ class DataStore(AbstractDataStore):
             if col not in df.columns:
                 df[col] = ''
             df[col] = df[col].fillna('').astype('str')
+        raw_text = (df['title'] + ' ' + df['text']).tolist()
+        self._vectoriser = TfidfVectorizer(stop_words='english', lowercase=True)
+        self._tfidf_matrix = self._vectoriser.fit_transform(raw_text)
         return df.reset_index(drop=True)
 
     def load(self, path):
@@ -70,7 +76,7 @@ class DataStore(AbstractDataStore):
             raise ValueError(f'Unsupported file type {file_type}. '
                              f'Supported: {list(self._LOADERS.keys())}')
         df = loader(path)
-        self._df = self._clean_df(df)
+        self._df = self._build_df(df)
         self._meta_cols = tuple(c for c in self._df.columns if c not in ('id', 'title', 'text'))
 
     def search(self, query: str, limit: int = 10) -> list[SearchResult] | list[None]:
@@ -88,7 +94,7 @@ class DataStore(AbstractDataStore):
             print("Nothing found!")
             return []
 
-        ranked = scores[mask].nlargest(limit)
+        ranked = scores[mask].nlargest(limit)  # mitigates top k problem
 
         results: list[SearchResult] = []
         for idx, score in ranked.items():
@@ -106,10 +112,28 @@ class DataStore(AbstractDataStore):
             )
         return results
 
-    def search_tdidf(self, query: str, limit: int = 10) -> list[SearchResult] | list[None]:
-        ranked = {}
+    def search_tfidf(self, query: str, limit: int = 10) -> list[SearchResult] | list[None]:
+        if not query.strip() or self._df is None:
+            print("Nothing found!")
+            return []
+        query_vec = self._vectoriser.transform([query])
+        raw_scores = cosine_similarity(query_vec, self._tfidf_matrix).flatten()
+
+        nonzero_mask = raw_scores > 0
+        if not nonzero_mask.any():
+            return []
+
+        # top k problem
+        # can become an issue where our limit > number of results
+        k = min(limit, int(nonzero_mask.sum()))
+        if k < len(raw_scores):
+            # np.argpartition returns indices of top K elements in array
+            top_k = np.argpartition(raw_scores, -k)[-k:]
+        else:
+            top_k = np.where(nonzero_mask)[0]
+        top_k = top_k[raw_scores[top_k].argsort()[::-1]]
         results: list[SearchResult] = []
-        for idx, score in ranked.items():
+        for idx in top_k:
             row = self._df.iloc[idx]
             results.append(
                 SearchResult(
@@ -119,7 +143,7 @@ class DataStore(AbstractDataStore):
                         text=row['text'],
                         metadata={}
                     ),
-                    score=float(score)
+                    score=round(float(raw_scores[idx]), 4)
                 )
             )
         return results
