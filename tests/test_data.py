@@ -2,7 +2,8 @@ import json
 import pytest
 from pathlib import Path
 
-from cpr.data import DataStore
+from cpr.data import DataStore, SearchResult, Document
+
 SAMPLE_DATA = [
     {
         "id": "1",
@@ -50,3 +51,16 @@ class TestDataStore():
     def test_unsupported_filetype(self):
         with pytest.raises(ValueError):
             DataStore().load('somethingwrong.docx')
+
+    def test_search(self, data_store):
+        results = data_store.search('apple', limit=1)
+        assert results == [
+            SearchResult(
+                score=2.0,
+                document=Document(
+                    id= "1",
+                    title="Alpha",
+                    text="I contain the word apple twice, and apple"
+                )
+            )
+        ]
