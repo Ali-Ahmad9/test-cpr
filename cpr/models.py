@@ -3,7 +3,7 @@ from pydantic import BaseModel
 class DocumentResult(BaseModel):
     id: str
     title: str
-    score: int
+    score: float|int
     snippet: str
 
 class SearchResponse(BaseModel):
