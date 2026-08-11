@@ -41,6 +41,12 @@ def search(
             ) for r in results]
     )
 
+@app.get('/search_tfidf')
+def search_tfidf(
+        query: str = Query(..., description="Search query "),
+        limit: int = Query(default=10, ge=1, le=100, description="Number of results to return"),
+) -> SearchResponse:
+    pass
 
 @app.get("/health")
 def health() -> Response:

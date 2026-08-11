@@ -92,3 +92,21 @@ class DataStore(AbstractDataStore):
                 )
             )
         return results
+
+    def search_tdidf(self, query: str, limit: int = 10) -> list[SearchResult] | list[None]:
+        ranked = {}
+        results: list[SearchResult] = []
+        for idx, score in ranked.items():
+            row = self._df.iloc[idx]
+            results.append(
+                SearchResult(
+                    document=Document(
+                        id=row['id'],
+                        title=row['title'],
+                        text=row['text'],
+                        metadata={}
+                    ),
+                    score=float(score)
+                )
+            )
+        return results
