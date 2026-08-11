@@ -45,14 +45,32 @@ def store(data_file: Path):
 
 
 @pytest.fixture
-def mock_client(store, monkeypatch):
+async def mock_client(store, monkeypatch):
     monkeypatch.setattr(cpr_server_module, '_store', store)
-    yield httpx.AsyncClient(
+    async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url='http://test'
-    )
+    ) as client:
+        yield client
 
 class TestServer:
 
     async def test_health(self, mock_client):
-        assert (await mock_client.get('health')).status_code == 200
+        assert (await mock_client.get('/health')).status_code == 200
+
+    async def test_search(self, mock_client):
+        results = (await mock_client.get('/search?query=apple')).json()
+        assert results == {'query': 'apple',
+ 'results': [{'id': '1',
+              'score': 2.0,
+              'snippet': 'I contain the word a',
+              'title': 'Alpha'},
+             {'id': '2',
+              'score': 1.0,
+              'snippet': 'Apple and cinnamon m',
+              'title': 'Beta'},
+             {'id': '3',
+              'score': 1.0,
+              'snippet': 'No fruit in this tex',
+              'title': 'Apple'}],
+ 'total': 3}
